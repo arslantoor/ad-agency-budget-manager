@@ -7,6 +7,7 @@ class SpendLog(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     brand_id = Column(Integer, ForeignKey("brands.id"))
+    campaign_id = Column(Integer, ForeignKey("campaigns.id"), nullable=False)
     amount_spent = Column(Integer)
     date = Column(Date)
 

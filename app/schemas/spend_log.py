@@ -3,7 +3,8 @@ from datetime import date
 
 class SpendLogCreate(BaseModel):
     brand_id: int
-    amount_spent: int
+    campaign_id: int
+    amount_spent: float
     date: date
 
 class SpendLogOut(BaseModel):
