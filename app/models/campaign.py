@@ -5,7 +5,7 @@ from app.db.base import Base
 class Campaign(Base):
     __tablename__ = "campaigns"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True,autoincrement=True)
     name = Column(String, index=True)
     brand_id = Column(Integer, ForeignKey("brands.id"))
     is_active = Column(Boolean, default=True)

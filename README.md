@@ -76,6 +76,7 @@ pip install -r requirements.txt
 
 ##  🗃️ Set Up DB & Run Migrations
 ```bash
+alembic revision --autogenerate -m "Recreate initial migration"
 alembic upgrade head
 ```
 ## ▶️ Start FastAPI App

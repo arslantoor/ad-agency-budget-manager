@@ -1,33 +1,22 @@
-from fastapi import FastAPI, Depends
-from sqlalchemy.orm import Session
+from fastapi import FastAPI
+from app.api.v1 import (
+    brand,
+)
+from app.db.session import engine
+from app.db.base import Base
 
-from app.model import BudgetType
-from app.database import SessionLocal
-import crud
+Base.metadata.create_all(bind=engine)
 
-app = FastAPI()
+app = FastAPI(
+    title="Ad Agency Budget Manager",
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json"
+)
 
-@app.get("/")
-def read_root():
-    return {"message": "Hello World"}
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-@app.post("/spend/")
-def spend(brand_id: int, campaign_id: int, amount: float, db: Session = Depends(get_db)):
-    crud.add_spend(db, brand_id, campaign_id, amount)
-    return {"message": "Spend logged and budget checked"}
-
-@app.post("/reset/daily")
-def reset_daily(db: Session = Depends(get_db)):
-    crud.reset_budgets(db, BudgetType.DAILY)
-    return {"message": "Daily budgets reset"}
-
-@app.post("/reset/monthly")
-def reset_monthly(db: Session = Depends(get_db)):
-    crud.reset_budgets(db, BudgetType.MONTHLY)
-    return {"message": "Monthly budgets reset"}
+api_v1_prefix = "/api/v1"
+app.include_router(brand.router, prefix=api_v1_prefix + "/brands", tags=["Brands"])
+# app.include_router(campaign.router, prefix=api_v1_prefix + "/campaigns", tags=["Campaigns"])
+# app.include_router(budget.router, prefix=api_v1_prefix + "/budgets", tags=["Budgets"])
+# app.include_router(spend_log.router, prefix=api_v1_prefix + "/spend-logs", tags=["Spend Logs"])
