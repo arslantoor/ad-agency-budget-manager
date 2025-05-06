@@ -1,12 +1,14 @@
 from fastapi import BackgroundTasks
 from datetime import datetime, time
+
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.models import Campaign, Budget, SpendLog
 from app.db.session import get_db
 
 def simulate_campaign_run(db: Session):
     current_time = datetime.utcnow().time()
-    campaigns = db.query(Campaign).filter(Campaign.status == True).all()
+    campaigns = db.query(Campaign).filter(Campaign.is_active == True).all()
 
     for campaign in campaigns:
         # Dayparting check
@@ -35,7 +37,7 @@ def simulate_campaign_run(db: Session):
         hourly_spend = campaign.estimated_hourly_spend
 
         if today_spend + hourly_spend > budget.daily_budget or month_spend + hourly_spend > budget.monthly_budget:
-            campaign.status = False
+            campaign.is_active = False
         else:
             # Log spend
             log = SpendLog(brand_id=campaign.brand_id, amount=hourly_spend, spend_date=today)

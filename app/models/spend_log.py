@@ -7,8 +7,9 @@ class SpendLog(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     brand_id = Column(Integer, ForeignKey("brands.id"))
-    campaign_id = Column(Integer, ForeignKey("campaigns.id"), nullable=False)
+    campaign_id = Column(Integer, ForeignKey("campaigns.id"), nullable=False) # new added
     amount_spent = Column(Integer)
     date = Column(Date)
 
     brand = relationship("Brand", back_populates="spend_logs")
+    campaign = relationship("Campaign", back_populates="spend_logs")

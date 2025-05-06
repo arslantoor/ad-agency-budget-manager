@@ -14,3 +14,4 @@ class Campaign(Base):
     end_time = Column(Time, nullable=True)
     estimated_hourly_spend = Column(Float, default=100)  # in your models.py
     brand = relationship("Brand", back_populates="campaigns")
+    spend_logs = relationship("SpendLog", back_populates="campaign")

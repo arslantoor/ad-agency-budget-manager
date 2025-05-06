@@ -14,6 +14,6 @@ celery_app.conf.task_routes = {
 celery_app.conf.beat_schedule = {
     'run-campaign-spend-every-hour': {
         'task': 'app.tasks.campaign_tasks.simulate_campaign_spend',
-        'schedule': crontab(minute=0, hour='*'),
+        'schedule': crontab(minute='*'),
     },
 }

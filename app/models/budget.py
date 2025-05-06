@@ -4,6 +4,7 @@ from app.db.base import Base
 
 class Budget(Base):
     __tablename__ = "budgets"
+    __table_args__ = {'extend_existing': True}  # This line fixes the error
 
     id = Column(Integer, primary_key=True,autoincrement=True)
     brand_id = Column(Integer, ForeignKey("brands.id"))
