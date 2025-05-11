@@ -238,7 +238,7 @@ def reset_budgets(db: Session = Depends(get_db)):
     if today.day == 1:
         db.query(SpendLog).delete()
     else:
-        db.query(SpendLog).filter(SpendLog.date < today).delete()
+        db.query(SpendLog).filter(SpendLog.date).delete()
 
     db.commit()
     return {"message": "Budgets reset."}
@@ -254,6 +254,7 @@ def reset_budget_by_brand(brand_id: int, db: Session = Depends(get_db)):
 
     # Validate brand
     brand = db.query(Brand).filter(Brand.id == brand_id).first()
+    print(today.day)
     if not brand:
         raise HTTPException(status_code=404, detail="Brand not found")
 
@@ -262,9 +263,9 @@ def reset_budget_by_brand(brand_id: int, db: Session = Depends(get_db)):
         deleted = db.query(SpendLog).filter(SpendLog.brand_id == brand_id).delete(synchronize_session=False)
     else:
         deleted = db.query(SpendLog).filter(
-            SpendLog.brand_id == brand_id,
-            func.date(SpendLog.date) < today
+            SpendLog.brand_id == brand_id
         ).delete(synchronize_session=False)
+        print(brand_id, brand.name)
 
     db.commit()
     return {
