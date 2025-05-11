@@ -1,6 +1,9 @@
-from sqlalchemy import Column, Integer, ForeignKey, Date
+from sqlalchemy import Column, Integer, ForeignKey, Date, DateTime
 from sqlalchemy.orm import relationship
+from datetime import datetime, timezone
 from app.db.base import Base
+
+now = datetime.now(timezone.utc)
 
 class SpendLog(Base):
     __tablename__ = "spend_logs"
@@ -9,7 +12,7 @@ class SpendLog(Base):
     brand_id = Column(Integer, ForeignKey("brands.id"))
     campaign_id = Column(Integer, ForeignKey("campaigns.id"), nullable=False) # new added
     amount_spent = Column(Integer)
-    date = Column(Date)
+    date = Column(DateTime(timezone=True), default=now.date())  # Changed from Date to DateTime
 
     brand = relationship("Brand", back_populates="spend_logs")
     campaign = relationship("Campaign", back_populates="spend_logs")

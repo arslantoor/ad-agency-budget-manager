@@ -1,46 +1,81 @@
-from fastapi import BackgroundTasks
-from datetime import datetime, time
-
-from sqlalchemy import func
-from sqlalchemy.orm import Session
+from datetime import datetime, timezone
+import pytz
+from sqlalchemy import func, cast, Date
+from app.celery_worker import celery_app
+from app.db.session import SessionLocal
 from app.models import Campaign, Budget, SpendLog
-from app.db.session import get_db
+import os
 
-def simulate_campaign_run(db: Session):
-    current_time = datetime.utcnow().time()
-    campaigns = db.query(Campaign).filter(Campaign.is_active == True).all()
+# Load timezone from environment variable
+TIMEZONE = os.getenv("APP_TIMEZONE", "UTC")  # Default to UTC if not set
 
-    for campaign in campaigns:
-        # Dayparting check
-        if campaign.dayparting_start and campaign.dayparting_end:
-            if not (campaign.dayparting_start <= current_time <= campaign.dayparting_end):
+import logging
+logger = logging.getLogger(__name__)
+
+@celery_app.task(name="app.task.campaign_task.simulate_campaign_run")
+def simulate_campaign_run():
+    try:
+        db = SessionLocal()
+
+        # Get the timezone-aware datetime
+        tz = pytz.timezone(TIMEZONE)
+        now = datetime.now(tz)  # Current time in the configured timezone
+        current_time = now.time()  # Only the time part for comparison
+        today = now.date()  # Current date
+        start_month = today.replace(day=1)  # Start of the current month
+
+        campaigns = db.query(Campaign).filter(Campaign.is_active == True).all()
+        for campaign in campaigns:
+            if campaign.start_time and campaign.end_time:
+                start_time = campaign.start_time
+                end_time = campaign.end_time
+
+                # Convert campaign start_time and end_time to the configured timezone
+                campaign_start_time = start_time.replace(tzinfo=tz)
+                campaign_end_time = end_time.replace(tzinfo=tz)
+
+                if campaign_start_time < campaign_end_time:
+                    # Same-day campaign window
+                    if not (campaign_start_time.time() <= current_time <= campaign_end_time.time()):
+                        continue
+                else:
+                    # Overnight campaign window (e.g., 22:00 to 02:00)
+                    if not (current_time >= campaign_start_time.time() or current_time <= campaign_end_time.time()):
+                        continue
+
+            budget = db.query(Budget).filter(Budget.brand_id == campaign.brand_id).first()
+            if not budget:
                 continue
 
-        budget = db.query(Budget).filter(Budget.brand_id == campaign.brand_id).first()
-        if not budget:
-            continue
+            # Calculate daily spend
+            today_spend = db.query(func.sum(SpendLog.amount_spent)).filter(
+                SpendLog.brand_id == campaign.brand_id,
+                cast(SpendLog.date, Date) == today
+            ).scalar() or 0
 
-        # Get today's and this month's spend
-        today = datetime.utcnow().date()
-        start_month = today.replace(day=1)
+            # Calculate monthly spend
+            month_spend = db.query(func.sum(SpendLog.amount_spent)).filter(
+                SpendLog.brand_id == campaign.brand_id,
+                cast(SpendLog.date, Date) >= start_month
+            ).scalar() or 0
 
-        today_spend = db.query(SpendLog).filter(
-            SpendLog.brand_id == campaign.brand_id,
-            SpendLog.spend_date == today
-        ).with_entities(func.sum(SpendLog.amount)).scalar() or 0
+            hourly_spend = campaign.estimated_hourly_spend
 
-        month_spend = db.query(SpendLog).filter(
-            SpendLog.brand_id == campaign.brand_id,
-            SpendLog.spend_date >= start_month
-        ).with_entities(func.sum(SpendLog.amount)).scalar() or 0
+            # Budget check
+            if today_spend + hourly_spend > budget.daily_budget or \
+                    month_spend + hourly_spend > budget.monthly_budget:
+                campaign.is_active = False
+            else:
+                # Create a new SpendLog with the current time in the correct timezone
+                log = SpendLog(
+                    brand_id=campaign.brand_id,
+                    campaign_id=campaign.id,
+                    amount_spent=hourly_spend,
+                    date=now  # Storing the current UTC time (timezone-aware)
+                )
+                db.add(log)
 
-        hourly_spend = campaign.estimated_hourly_spend
-
-        if today_spend + hourly_spend > budget.daily_budget or month_spend + hourly_spend > budget.monthly_budget:
-            campaign.is_active = False
-        else:
-            # Log spend
-            log = SpendLog(brand_id=campaign.brand_id, amount=hourly_spend, spend_date=today)
-            db.add(log)
-
-    db.commit()
+        db.commit()
+        db.close()
+    except Exception as error:
+        logger.error("Exception ",error)
