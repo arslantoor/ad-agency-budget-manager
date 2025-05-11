@@ -31,8 +31,8 @@ def simulate_campaign_run():
                 end_time = campaign.end_time
 
                 # Convert campaign start_time and end_time to the configured timezone
-                campaign_start_time = start_time.replace(tzinfo=tz)
-                campaign_end_time = end_time.replace(tzinfo=tz)
+                campaign_start_time = start_time
+                campaign_end_time = end_time
 
                 if campaign_start_time < campaign_end_time:
                     # Same-day campaign window

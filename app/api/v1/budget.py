@@ -1,4 +1,6 @@
 # Required imports
+import json
+
 import pytz
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -117,7 +119,7 @@ def get_spend_logs(
 # ------------------------------------------
 # Check budgets for all brands and update campaign statuses
 # ------------------------------------------
-@router.post("/check-budgets")
+@router.get("/check-budgets")
 def check_budgets(db: Session = Depends(get_db)):
     results = []
     tz = pytz.timezone(Settings.Time_ZONE)
@@ -127,42 +129,53 @@ def check_budgets(db: Session = Depends(get_db)):
     brands = db.query(Brand).all()
 
     for brand in brands:
-        # Calculate today's and this month's spend
-        daily_spend = db.query(func.sum(SpendLog.amount_spent))\
-            .filter(SpendLog.brand_id == brand.id, SpendLog.date >= today).scalar() or 0
-        monthly_spend = db.query(func.sum(SpendLog.amount_spent))\
-            .filter(SpendLog.brand_id == brand.id, SpendLog.date >= month_start).scalar() or 0
+        daily_spend = db.query(func.sum(SpendLog.amount_spent)) \
+                          .filter(SpendLog.brand_id == brand.id, SpendLog.date >= today).scalar() or 0
 
-        # Get brand budget and campaigns
+        monthly_spend = db.query(func.sum(SpendLog.amount_spent)) \
+                            .filter(SpendLog.brand_id == brand.id, SpendLog.date >= month_start).scalar() or 0
+
         budget = db.query(Budget).filter(Budget.brand_id == brand.id).first()
         campaigns = db.query(Campaign).filter(Campaign.brand_id == brand.id).all()
 
         campaign_updates = []
 
-        # Pause/activate campaigns based on budget usage
-        for campaign in campaigns:
-            if monthly_spend >= budget.monthly_budget or daily_spend >= budget.daily_budget:
-                campaign.status = False
-            else:
-                campaign.status = True
+        if budget:
+            for campaign in campaigns:
+                if monthly_spend >= budget.monthly_budget or daily_spend >= budget.daily_budget:
+                    campaign.status = False
+                else:
+                    campaign.status = True
 
-            campaign_updates.append({
-                "campaign_id": campaign.id,
-                "campaign_name": campaign.name,
-                "status": "active" if campaign.status else "paused"
+                campaign_updates.append({
+                    "campaign_id": campaign.id,
+                    "campaign_name": campaign.name,
+                    "status": "active" if campaign.status else "paused"
+                })
+
+            db.commit()
+
+            results.append({
+                "brand_id": brand.id,
+                "brand_name": brand.name,
+                "daily_spend": float(daily_spend),
+                "daily_budget": float(budget.daily_budget),
+                "monthly_spend": float(monthly_spend),
+                "monthly_budget": float(budget.monthly_budget),
+                "campaigns": campaign_updates
             })
 
-        db.commit()
-
-        results.append({
-            "brand_id": brand.id,
-            "brand_name": brand.name,
-            "daily_spend": float(daily_spend),
-            "daily_budget": float(budget.daily_budget),
-            "monthly_spend": float(monthly_spend),
-            "monthly_budget": float(budget.monthly_budget),
-            "campaigns": campaign_updates
-        })
+        else:
+            results.append({
+                "brand_id": brand.id,
+                "brand_name": brand.name,
+                "daily_spend": float(daily_spend),
+                "daily_budget": None,
+                "monthly_spend": float(monthly_spend),
+                "monthly_budget": None,
+                "campaigns": campaign_updates,
+                "note": "No budget found for this brand."
+            })
 
     return {"message": "Budgets checked and campaigns updated.", "data": results}
 

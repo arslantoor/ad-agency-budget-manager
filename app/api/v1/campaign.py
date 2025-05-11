@@ -4,6 +4,8 @@ from app.schemas.campaign import CampaignCreate, CampaignOut
 from app.db.session import get_db
 from app.models import Campaign, Brand, Budget
 from app.task.campaign_task import simulate_campaign_run
+from pytz import timezone as tz
+import pytz
 
 router = APIRouter()
 
@@ -12,22 +14,32 @@ router = APIRouter()
 # ----------------------------------------
 @router.post("/", response_model=CampaignOut)
 def create_campaign(campaign: CampaignCreate, db: Session = Depends(get_db)):
-    # 1. Check if the brand exists
     brand = db.query(Brand).filter(Brand.id == campaign.brand_id).first()
     if not brand:
         raise HTTPException(status_code=404, detail="Brand not found")
 
-    # 2. Check if a budget exists for the brand
     budget = db.query(Budget).filter(Budget.brand_id == campaign.brand_id).first()
     if not budget:
         raise HTTPException(status_code=400, detail="Budget not found for this brand")
 
-    # 3. Create and persist the campaign
-    new_campaign = Campaign(**campaign.dict())
+    # Convert local times to UTC using user's timezone
+    user_tz = tz(campaign.timezone or "UTC")
+
+    start_time_utc = campaign.start_time.astimezone(pytz.UTC) if campaign.start_time else None
+    end_time_utc = campaign.end_time.astimezone(pytz.UTC) if campaign.end_time else None
+
+    new_campaign = Campaign(
+        name=campaign.name,
+        brand_id=campaign.brand_id,
+        start_time=start_time_utc,
+        end_time=end_time_utc,
+    )
+
     db.add(new_campaign)
     db.commit()
     db.refresh(new_campaign)
     return new_campaign
+
 
 # ----------------------------------------
 # List all campaigns

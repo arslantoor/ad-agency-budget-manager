@@ -7,6 +7,7 @@ class CampaignCreate(BaseModel):
     brand_id: int
     start_time: Optional[datetime] = Field(None, description="Timezone-aware start datetime")
     end_time: Optional[datetime] = Field(None, description="Timezone-aware end datetime")
+    timezone: Optional[str] = Field("UTC", description="IANA timezone name like 'Asia/Karachi'")
 
 class CampaignOut(BaseModel):
     id: int
