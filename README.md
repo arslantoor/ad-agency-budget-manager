@@ -127,3 +127,5 @@ alembic downgrade -1 // Downgrade last migration:
 Adheres to SOLID principles via service layers, clear routing, and decoupled logic.
 
 Uses API versioning in the routing layer for scalable design.
+
+![img.png](img.png)
