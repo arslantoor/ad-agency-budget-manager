@@ -16,54 +16,74 @@ This project is a budget management system for an Ad Agency. It handles:
 - SQLAlchemy
 - Alembic (DB migrations)
 - SQLite (default DB, easily swappable)
-
+- celery (background task scheduler)
 ---
 
 ## 🗂 Project Structure
 
 ```bash
-app/
-│
-├── api/
-│ └── v1/
-│ ├── routes_brand.py
-│ ├── routes_budget.py
-│ ├── routes_campaign.py
-│ └── routes_spend_log.py
-│
-├── crud/
-│ ├── crud_brand.py
-│ └── ...
-│
-├── core/
-│ └── config.py
-│
-├── db/
-│ ├── base.py
-│ ├── session.py
-│ └── init_db.py
-│
-├── models/
-│ ├── brand.py
-│ ├── budget.py
-│ ├── campaign.py
-│ └── spend_log.py
-│
-├── schemas/
-│ ├── brand.py
-│ ├── budget.py
-│ ├── campaign.py
-│ └── spend_log.py
-│
-└── services/
-└── budget_service.py
+├── alembic
+│   ├── env.py
+│   ├── .gitignore
+│   ├── README
+│   ├── script.py.mako
+│   └── versions
+│       ├── 16cf3ec810e2_initial_schema.py
+│       ├── c0ba0d9951b4_change_spendlog_date_and_campaing_to_.py
+│       └── ff9005086f5b_change_spendlog_date_to_datetime.py
+├── alembic.ini
+├── app
+│   ├── api
+│   │   ├── __init__.py
+│   │   └── v1
+│   │       ├── brand.py
+│   │       ├── budget.py
+│   │       └── campaign.py
+│   ├── celery_worker.py
+│   ├── core
+│   │   ├── config.py
+│   │   └── __init__.py
+│   ├── db
+│   │   ├── base.py
+│   │   ├── __init__.py
+│   │   └── session.py
+│   ├── __init__.py
+│   ├── models
+│   │   ├── brand.py
+│   │   ├── budget.py
+│   │   ├── campaign.py
+│   │   ├── __init__.py
+│   │   └── spend_log.py
+│   ├── schemas
+│   │   ├── brand.py
+│   │   ├── budget.py
+│   │   ├── campaign.py
+│   │   ├── __init__.py
+│   │   └── spend_log.py
+│   ├── services
+│   │   ├── budget.py
+│   │   └── __init__.py
+│   └── task
+│       ├── campaign_task.py
+│       ├── __init__.py
+│       └── reset_campaigns.py
+├── .env
+├── .env_example
+├── .gitignore
+├── .idea
+│   ├── add_agency_project.iml
+│   ├── .gitignore
+│   ├── inspectionProfiles
+│   │   └── profiles_settings.xml
+│   ├── misc.xml
+│   ├── modules.xml
+│   ├── vcs.xml
+│   └── workspace.xml
+├── LICENSE
+├── main.py
+├── README.md
+└── requirements.txt
 
-alembic/
-├── versions/
-├── env.py
-└── script.py.mako
-
-main.py
 ```
 ## 🚀 Running the Project
 ### 1. 📦 Install Dependencies
@@ -89,6 +109,11 @@ Swagger UI: http://localhost:8000/docs
 
 Redoc: http://localhost:8000/redoc
 
+## celery commands Background task worker:
+```
+celery -A app.celery_worker worker --loglevel=info -Q default
+celery -A app.celery_worker beat --loglevel=info   
+```
 ## ✅ Alembic Commands
 Initialize (already done in setup):
 ```commandline
